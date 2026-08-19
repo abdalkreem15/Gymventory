@@ -7,6 +7,9 @@ declare global {
 			user?: {
 				id: number;
 				username: string;
+				email: string;
+				gender: string;
+				training_type: string;
 			};
 		}
 		// interface PageData {}

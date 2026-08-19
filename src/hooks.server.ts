@@ -6,8 +6,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (userId) {
 		const user = db
-			.prepare('SELECT id, username, email FROM users WHERE id = ?')
-			.get(userId) as { id: number; username: string; email: string } | undefined;
+			.prepare(
+				'SELECT id, username, email, gender, training_type FROM users WHERE id = ?'
+			)
+			.get(userId) as
+			| {
+					id: number;
+					username: string;
+					email: string;
+					gender: string;
+					training_type: string;
+			  }
+			| undefined;
 
 		if (user) {
 			event.locals.user = user;

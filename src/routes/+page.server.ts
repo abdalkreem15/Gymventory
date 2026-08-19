@@ -14,10 +14,25 @@ export const load: PageServerLoad = ({ locals }) => {
 		.prepare('SELECT equipment_id FROM user_inventory WHERE user_id = ?')
 		.all(locals.user.id) as { equipment_id: number }[];
 
+	// Fetch equipment recommended for this user's training type
+	const recommendedEquipment = db
+		.prepare(
+			`
+		SELECT DISTINCT eq.id, eq.name
+		FROM equipment eq
+		JOIN exercise_equipment ee ON eq.id = ee.equipment_id
+		JOIN training_exercises te ON ee.exercise_id = te.exercise_id
+		WHERE te.training_type_id = (SELECT id FROM training_types WHERE name = ?)
+		ORDER BY eq.name ASC
+	`
+		)
+		.all(locals.user.training_type) as { id: number; name: string }[];
+
 	return {
 		user: locals.user,
 		equipment,
-		userEquipmentIds: userEquipment.map((item) => item.equipment_id)
+		userEquipmentIds: userEquipment.map((item) => item.equipment_id),
+		recommendedEquipment
 	};
 };
 

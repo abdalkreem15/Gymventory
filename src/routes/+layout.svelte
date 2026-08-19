@@ -16,6 +16,10 @@
 	);
 </script>
 
+<svelte:head>
+	<link rel="icon" type="image/svg+xml" href={favicon} />
+</svelte:head>
+
 {#if !isAuthPage}
 	<header class="bg-white border-b shadow-sm sticky top-0 z-10">
 		<nav class="max-w-4xl mx-auto px-6 py-3.5 flex items-center justify-between">
@@ -31,6 +35,9 @@
 						</a>
 						<a href="/workouts" class="text-gray-600 hover:text-blue-600 transition-colors">
 							Workouts
+						</a>
+						<a href="/profile" class="text-gray-600 hover:text-blue-600 transition-colors">
+							Profile
 						</a>
 					</div>
 
