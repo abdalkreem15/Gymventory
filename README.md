@@ -110,7 +110,7 @@ Gymventory/
 
 ```bash
 # Clone and install dependencies
-git clone <repo-url>
+git clone <https://github.com/abdalkreem15/Gymventory.git>
 cd Gymventory
 npm install
 
