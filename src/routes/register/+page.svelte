@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { calculateBodyMetrics, type Gender } from '$lib/bodyMetrics';
+	import { calculateAge, parseDMY } from '$lib/age';
+	import DatePicker from '$lib/DatePicker.svelte';
 
 	let { form }: { form: { error?: string } | null } = $props();
 
 	let gender: Gender = $state('male');
+	let birthDate = $state('');
 	let trainingType = $state('fitness');
 
 	// Measurement inputs as strings (for controlled inputs)
@@ -13,6 +16,7 @@
 	let waistCm = $state('');
 	let hipCm = $state('');
 
+	const ageNum = $derived(birthDate ? (parseDMY(birthDate) ? calculateAge(parseDMY(birthDate)!) : 0) : 0);
 	const weightNum = $derived(Number(weightKg));
 	const heightNum = $derived(Number(heightCm));
 	const neckNum = $derived(Number(neckCm));
@@ -30,6 +34,7 @@
 		) {
 			return calculateBodyMetrics({
 				gender,
+				age: ageNum > 0 ? ageNum : null,
 				weightKg: weightNum,
 				heightCm: heightNum,
 				neckCm: neckNum,
@@ -157,9 +162,24 @@
 				</div>
 			</div>
 
-			<!-- Gender Selection -->
+			<!-- Birth Date & Gender -->
 			<div class="space-y-3">
-				<h2 class="text-sm font-bold text-gray-500 uppercase tracking-wide">Gender</h2>
+				<h2 class="text-sm font-bold text-gray-500 uppercase tracking-wide">Birth Date & Gender</h2>
+
+				<div>
+					<label for="birthDate" class="block text-sm font-medium text-gray-700 mb-1">
+						Birth Date
+					</label>
+					<DatePicker bind:value={birthDate} name="birthDate" />
+					<p class="text-xs text-gray-500 mt-1">
+						{#if birthDate}
+							You will be <span class="font-semibold">{ageNum}</span> years old. Your age is
+							calculated automatically from your birth date.
+						{:else}
+							Click the calendar button 📅 to pick your birth date from the calendar.
+						{/if}
+					</p>
+				</div>
 				<div class="grid grid-cols-2 gap-4">
 					<label
 						class="flex items-center gap-3 p-4 border rounded-lg cursor-pointer transition-colors {gender === 'male' ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' : 'hover:bg-gray-50'}"

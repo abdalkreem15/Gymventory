@@ -3,6 +3,7 @@ import type { Actions } from './$types';
 import db from '$lib/server/db';
 import { randomBytes, scryptSync } from 'node:crypto';
 import { calculateBodyMetrics, type Gender } from '$lib/bodyMetrics';
+import { calculateAge, isValidBirthDate, parseDateInput } from '$lib/age';
 
 function hashPassword(password: string): string {
 	const salt = randomBytes(16).toString('hex');
@@ -24,6 +25,7 @@ export const actions: Actions = {
 		const password = formData.get('password')?.toString();
 		const confirmPassword = formData.get('confirmPassword')?.toString();
 		const gender = formData.get('gender')?.toString() as Gender | undefined;
+		const birthDate = formData.get('birthDate')?.toString();
 		const trainingType = formData.get('trainingType')?.toString();
 
 		const weightKg = parseNumber(formData.get('weightKg'));
@@ -51,6 +53,17 @@ export const actions: Actions = {
 
 		if (gender !== 'male' && gender !== 'female') {
 			return fail(400, { error: 'Please select a valid gender.' });
+		}
+
+		// Convert date input (DD/MM/YYYY or YYYY-MM-DD) to YYYY-MM-DD for storage
+		const birthDateISO = birthDate ? parseDateInput(birthDate) : null;
+		if (!birthDateISO || !isValidBirthDate(birthDateISO)) {
+			return fail(400, { error: 'Please enter a valid birth date.' });
+		}
+
+		const age = calculateAge(birthDateISO);
+		if (age < 13 || age > 120) {
+			return fail(400, { error: 'You must be between 13 and 120 years old to register.' });
 		}
 
 		const validTrainingTypes = ['fitness', 'bodybuilding', 'boxing', 'kickboxing', 'kungfu', 'swimming'];
@@ -110,9 +123,9 @@ export const actions: Actions = {
 			// Run user creation and initial measurement in a transaction
 			const createUserTransaction = db.transaction(() => {
 				const stmt = db.prepare(
-					'INSERT INTO users (username, email, password_hash, gender, training_type) VALUES (?, ?, ?, ?, ?)'
+					'INSERT INTO users (username, email, password_hash, gender, birth_date, training_type) VALUES (?, ?, ?, ?, ?, ?)'
 				);
-				const result = stmt.run(username, email, passwordHash, gender, trainingType);
+				const result = stmt.run(username, email, passwordHash, gender, birthDateISO, trainingType);
 				const userId = result.lastInsertRowid as number;
 
 				const measurementStmt = db.prepare(

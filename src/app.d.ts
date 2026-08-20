@@ -9,6 +9,8 @@ declare global {
 				username: string;
 				email: string;
 				gender: string;
+				birth_date: string;
+				age: number;
 				training_type: string;
 			};
 		}

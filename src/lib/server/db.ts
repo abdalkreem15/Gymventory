@@ -13,7 +13,9 @@ db.exec(`
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         gender TEXT NOT NULL DEFAULT 'male',
+        birth_date TEXT NOT NULL,
         training_type TEXT NOT NULL DEFAULT 'fitness',
+        target_weight_kg REAL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -71,6 +73,12 @@ db.exec(`
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 `);
+
+// Migration: add target_weight_kg column to existing users tables
+const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+if (!userColumns.some((col) => col.name === 'target_weight_kg')) {
+	db.exec('ALTER TABLE users ADD COLUMN target_weight_kg REAL');
+}
 
 // Seed default equipment and exercises only if the database has none yet
 const exerciseCount = db

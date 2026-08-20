@@ -1,5 +1,7 @@
 import db from '$lib/server/db';
 import type { PageServerLoad } from './$types';
+import { filterExercisesByAge } from '$lib/exerciseRecommendations';
+import { calculateAge } from '$lib/age';
 
 export interface RecommendedExercise {
 	id: number;
@@ -13,12 +15,14 @@ export interface RecommendedExercise {
 export const load: PageServerLoad = ({ locals }) => {
 	const userId = locals.user!.id;
 
-	// Fetch user's training type
+	// Fetch user's training type and birth date
 	const user = db
-		.prepare('SELECT training_type FROM users WHERE id = ?')
-		.get(userId) as { training_type: string };
+		.prepare('SELECT training_type, birth_date FROM users WHERE id = ?')
+		.get(userId) as { training_type: string; birth_date: string };
 
 	const trainingType = user?.training_type ?? 'fitness';
+	// Compute age dynamically from birth date
+	const userAge = user?.birth_date ? calculateAge(user.birth_date) : null;
 
 	// Query exercises where ALL required equipment is in this user's inventory,
 	// prioritizing exercises linked to the user's training type
@@ -50,6 +54,9 @@ export const load: PageServerLoad = ({ locals }) => {
 	`
 		)
 		.all(trainingType, userId) as RecommendedExercise[];
+
+	// Filter out high-impact exercises that are unsafe for the user's age
+	const ageFilteredExercises = filterExercisesByAge(recommendedExercises, userAge);
 
 	// Fetch the training type description
 	const trainingTypeInfo = db
@@ -90,7 +97,7 @@ export const load: PageServerLoad = ({ locals }) => {
 		trainingTypeLabel: trainingTypeLabels[trainingType] ?? trainingType,
 		trainingTypeDescription: trainingTypeInfo?.description ?? null,
 		recommendedEquipment,
-		exercises: recommendedExercises,
+		exercises: ageFilteredExercises,
 		hasInventory: userInventoryCount.count > 0
 	};
 };

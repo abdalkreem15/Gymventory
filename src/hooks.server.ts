@@ -1,5 +1,6 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import db from '$lib/server/db';
+import { calculateAge } from '$lib/age';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const userId = event.cookies.get('session_user_id');
@@ -7,7 +8,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (userId) {
 		const user = db
 			.prepare(
-				'SELECT id, username, email, gender, training_type FROM users WHERE id = ?'
+				'SELECT id, username, email, gender, birth_date, training_type FROM users WHERE id = ?'
 			)
 			.get(userId) as
 			| {
@@ -15,12 +16,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 					username: string;
 					email: string;
 					gender: string;
+					birth_date: string;
 					training_type: string;
 			  }
 			| undefined;
 
 		if (user) {
-			event.locals.user = user;
+			event.locals.user = {
+				...user,
+				age: calculateAge(user.birth_date)
+			};
 		} else {
 			event.cookies.delete('session_user_id', { path: '/' });
 		}

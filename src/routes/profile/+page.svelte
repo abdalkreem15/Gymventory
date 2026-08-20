@@ -1,147 +1,190 @@
 <script lang="ts">
-	import { calculateBodyMetrics, type Gender } from '$lib/bodyMetrics';
+    import { calculateBodyMetrics, type Gender } from '$lib/bodyMetrics';
+    import { formatDMY } from '$lib/age';
+    import DatePicker from '$lib/DatePicker.svelte';
 
-	interface Measurement {
-		id: number;
-		weight_kg: number;
-		height_cm: number;
-		neck_cm: number;
-		waist_cm: number;
-		hip_cm: number | null;
-		measured_at: string;
-		bmi: number;
-		body_fat_percent: number | null;
-		bmi_category: string;
-	}
+    interface Measurement {
+        id: number;
+        weight_kg: number;
+        height_cm: number;
+        neck_cm: number;
+        waist_cm: number;
+        hip_cm: number | null;
+        measured_at: string;
+        bmi: number;
+        body_fat_percent: number | null;
+        bmi_category: string;
+    }
 
-	interface TrainingTypeInfo {
-		name: string;
-		description: string;
-	}
+    interface TrainingTypeInfo {
+        name: string;
+        description: string;
+    }
 
-	interface UserInfo {
-		id: number;
-		username: string;
-		email: string;
-		gender: Gender;
-		training_type: string;
-	}
+    interface UserInfo {
+        id: number;
+        username: string;
+        email: string;
+        gender: Gender;
+        birth_date: string;
+        age: number;
+        training_type: string;
+        target_weight_kg: number | null;
+    }
 
-	let { data, form }: {
-		data: { user: UserInfo; trainingType?: TrainingTypeInfo; measurements: Measurement[] };
-		form: { error?: string; success?: boolean; message?: string } | null;
-	} = $props();
+    interface PerfectWeightInfo {
+        suggestedKg: number;
+        minKg: number;
+        maxKg: number;
+        customKg: number | null;
+    }
 
-	// New measurement form state
-	let weightKg = $state('');
-	let heightCm = $state('');
-	let neckCm = $state('');
-	let waistCm = $state('');
-	let hipCm = $state('');
+    let { data, form }: {
+        data: {
+            user: UserInfo;
+            trainingType?: TrainingTypeInfo;
+            measurements: Measurement[];
+            perfectWeight?: PerfectWeightInfo;
+        };
+        form: { error?: string; success?: boolean; message?: string } | null;
+    } = $props();
 
-	const weightNum = $derived(Number(weightKg));
-	const heightNum = $derived(Number(heightCm));
-	const neckNum = $derived(Number(neckCm));
-	const waistNum = $derived(Number(waistCm));
-	const hipNum = $derived(Number(hipCm));
+    // New measurement form state
+    let weightKg = $state('');
+    let heightCm = $state('');
+    let neckCm = $state('');
+    let waistCm = $state('');
+    let hipCm = $state('');
 
-	const isFemale = $derived(data.user.gender === 'female');
+    // Form field states initialized as empty strings to avoid Svelte 5 compiler warnings
+    let birthDateInput = $state('');
+    let targetWeightInput = $state('');
 
-	// Live BMI / body fat preview for new measurement
-	const metrics = $derived.by(() => {
-		if (
-			weightNum > 0 &&
-			heightNum > 0 &&
-			neckNum > 0 &&
-			waistNum > 0 &&
-			(!isFemale || hipNum > 0)
-		) {
-			return calculateBodyMetrics({
-				gender: data.user.gender,
-				weightKg: weightNum,
-				heightCm: heightNum,
-				neckCm: neckNum,
-				waistCm: waistNum,
-				hipCm: isFemale ? hipNum : null
-			});
-		}
-		return null;
-	});
+    // Sync form field values reactively when server data changes
+    $effect(() => {
+        birthDateInput = data.user.birth_date ? formatDMY(data.user.birth_date) : '';
+        targetWeightInput = data.perfectWeight?.customKg?.toString() ?? '';
+    });
 
-	// Latest measurement (first row is most recent)
-	const latest = $derived(data.measurements[0]);
+    const weightNum = $derived(Number(weightKg));
+    const heightNum = $derived(Number(heightCm));
+    const neckNum = $derived(Number(neckCm));
+    const waistNum = $derived(Number(waistCm));
+    const hipNum = $derived(Number(hipCm));
 
-	const trainingTypeLabels: Record<string, string> = {
-		fitness: 'Fitness & Weight Loss',
-		bodybuilding: 'Bodybuilding',
-		boxing: 'Boxing',
-		kickboxing: 'Kickboxing',
-		kungfu: 'Kung Fu',
-		swimming: 'Swimming'
-	};
+    const isFemale = $derived(data.user.gender === 'female');
 
-	const trainingOptions = [
-		{
-			value: 'fitness',
-			icon: '🔥',
-			title: 'Fitness & Weight Loss',
-			description: 'Lose weight & improve health with cardio + full-body circuits'
-		},
-		{
-			value: 'bodybuilding',
-			icon: '💪',
-			title: 'Bodybuilding',
-			description: 'Build muscle mass with hypertrophy splits & progressive overload'
-		},
-		{
-			value: 'boxing',
-			icon: '🥊',
-			title: 'Boxing',
-			description: 'Train like a boxer — heavy bag, speed bag, footwork & conditioning'
-		},
-		{
-			value: 'kickboxing',
-			icon: '🦵',
-			title: 'Kickboxing',
-			description: 'Combine punches & kicks with pads, heavy bag & leg power work'
-		},
-		{
-			value: 'kungfu',
-			icon: '🐉',
-			title: 'Kung Fu',
-			description: 'Traditional martial arts — stances, forms, strikes & discipline'
-		},
-		{
-			value: 'swimming',
-			icon: '🏊',
-			title: 'Swimming',
-			description: 'Sport-specific swim training — sprints, kicks & technique work'
-		}
-	];
+    // Live BMI / body fat preview for new measurement
+    const metrics = $derived.by(() => {
+        if (
+            weightNum > 0 &&
+            heightNum > 0 &&
+            neckNum > 0 &&
+            waistNum > 0 &&
+            (!isFemale || hipNum > 0)
+        ) {
+            return calculateBodyMetrics({
+                gender: data.user.gender,
+                weightKg: weightNum,
+                heightCm: heightNum,
+                neckCm: neckNum,
+                waistCm: waistNum,
+                hipCm: isFemale ? hipNum : null
+            });
+        }
+        return null;
+    });
 
-	function formatDate(dateStr: string): string {
-		return new Date(dateStr).toLocaleDateString('en-GB', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	}
+    // Latest measurement (first row is most recent)
+    const latest = $derived(data.measurements[0]);
 
-	// Delete account confirmation modal state
-	let showDeleteModal = $state(false);
-	let deleteForm = $state<HTMLFormElement | null>(null);
+    const isFitness = $derived(data.user.training_type === 'fitness');
 
-	function openDeleteModal(): void {
-		showDeleteModal = true;
-	}
+    const perfectWeightKg = $derived(
+        data.perfectWeight ? (data.perfectWeight.customKg ?? data.perfectWeight.suggestedKg) : null
+    );
 
-	function closeDeleteModal(): void {
-		showDeleteModal = false;
-	}
+    const perfectWeightProgress = $derived.by(() => {
+        if (!latest || !data.perfectWeight || perfectWeightKg === null) return 0;
+        const current = latest.weight_kg;
+        if (current <= perfectWeightKg) return 100;
+        const start = data.perfectWeight.maxKg;
+        if (start <= perfectWeightKg) return 0;
+        return Math.min(100, Math.max(0, Math.round(((start - current) / (start - perfectWeightKg)) * 100)));
+    });
 
-	function submitDeleteAccount(): void {
-		deleteForm?.requestSubmit();
-	}
+    const trainingTypeLabels: Record<string, string> = {
+        fitness: 'Fitness & Weight Loss',
+        bodybuilding: 'Bodybuilding',
+        boxing: 'Boxing',
+        kickboxing: 'Kickboxing',
+        kungfu: 'Kung Fu',
+        swimming: 'Swimming'
+    };
+
+    const trainingOptions = [
+        {
+            value: 'fitness',
+            icon: '🔥',
+            title: 'Fitness & Weight Loss',
+            description: 'Lose weight & improve health with cardio + full-body circuits'
+        },
+        {
+            value: 'bodybuilding',
+            icon: '💪',
+            title: 'Bodybuilding',
+            description: 'Build muscle mass with hypertrophy splits & progressive overload'
+        },
+        {
+            value: 'boxing',
+            icon: '🥊',
+            title: 'Boxing',
+            description: 'Train like a boxer — heavy bag, speed bag, footwork & conditioning'
+        },
+        {
+            value: 'kickboxing',
+            icon: '🦵',
+            title: 'Kickboxing',
+            description: 'Combine punches & kicks with pads, heavy bag & leg power work'
+        },
+        {
+            value: 'kungfu',
+            icon: '🐉',
+            title: 'Kung Fu',
+            description: 'Traditional martial arts — stances, forms, strikes & discipline'
+        },
+        {
+            value: 'swimming',
+            icon: '🏊',
+            title: 'Swimming',
+            description: 'Sport-specific swim training — sprints, kicks & technique work'
+        }
+    ];
+
+    function formatDate(dateStr: string): string {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    // Delete account confirmation modal state
+    let showDeleteModal = $state(false);
+    let deleteForm = $state<HTMLFormElement | null>(null);
+
+    function openDeleteModal(): void {
+        showDeleteModal = true;
+    }
+
+    function closeDeleteModal(): void {
+        showDeleteModal = false;
+    }
+
+    function submitDeleteAccount(): void {
+        deleteForm?.requestSubmit();
+    }
 </script>
 
 <svelte:head>
@@ -155,6 +198,7 @@
 		<h1 class="text-3xl font-bold text-gray-900">Your Profile</h1>
 		<p class="text-sm text-gray-600 mt-1">
 			Logged in as <span class="font-semibold">{data.user.username}</span> ·
+			Age: <span class="font-semibold">{data.user.age}</span> ·
 			{#if data.trainingType}
 				Goal: <span class="font-semibold text-blue-600">{trainingTypeLabels[data.user.training_type] ?? data.user.training_type}</span>
 			{/if}
@@ -175,7 +219,7 @@
 
 	<!-- Current Stats -->
 	{#if latest}
-		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+		<div class="grid grid-cols-2 gap-4 mb-8 {isFitness ? 'md:grid-cols-5' : 'md:grid-cols-4'}">
 			<div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
 				<div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Weight</div>
 				<div class="text-2xl font-bold text-gray-900 mt-1">{latest.weight_kg.toFixed(1)} kg</div>
@@ -203,6 +247,20 @@
 				<div class="text-2xl font-bold text-gray-900 mt-1">{latest.height_cm.toFixed(1)} cm</div>
 				<div class="text-xs text-gray-500 mt-0.5">Waist {latest.waist_cm.toFixed(1)} cm</div>
 			</div>
+
+			{#if isFitness && data.perfectWeight}
+				<div class="bg-white border border-green-200 rounded-lg p-5 shadow-sm">
+					<div class="text-xs font-semibold text-green-600 uppercase tracking-wide">Perfect Weight</div>
+					<div class="text-2xl font-bold text-green-700 mt-1">{perfectWeightKg!.toFixed(1)} kg</div>
+					<div class="text-xs text-gray-500 mt-0.5">
+						{#if data.perfectWeight.customKg !== null}
+							Your target
+						{:else}
+							Suggested · Healthy {data.perfectWeight.minKg.toFixed(1)}–{data.perfectWeight.maxKg.toFixed(1)} kg
+						{/if}
+					</div>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<div class="bg-blue-50 border border-blue-200 rounded-xl p-10 text-center mb-8">
@@ -332,6 +390,114 @@
 					Save Measurement
 				</button>
 			</div>
+		</form>
+	</div>
+
+	<!-- Perfect Weight (Fitness / Weight Loss only) -->
+	{#if isFitness}
+		<div class="bg-white border border-gray-200 rounded-xl p-6 mb-10">
+			<h2 class="text-lg font-bold text-gray-900 mb-1">Perfect Weight</h2>
+			<p class="text-sm text-gray-600 mb-4">
+				Your suggested perfect weight is calculated from your height to keep you in a healthy BMI range.
+				You can set your own target weight instead.
+			</p>
+
+			{#if data.perfectWeight}
+				<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+					<div class="flex items-center justify-between flex-wrap gap-2">
+						<div>
+							<div class="text-xs font-semibold text-green-700 uppercase tracking-wide">Current Target</div>
+							<div class="text-xl font-bold text-green-800">
+								{perfectWeightKg!.toFixed(1)} kg
+								{#if data.perfectWeight.customKg === null}
+									<span class="text-xs font-medium text-green-600">(suggested)</span>
+								{/if}
+							</div>
+						</div>
+						<div class="text-right">
+							<div class="text-xs font-semibold text-green-700 uppercase tracking-wide">Healthy Range</div>
+							<div class="text-sm font-medium text-green-800">
+								{data.perfectWeight.minKg.toFixed(1)} – {data.perfectWeight.maxKg.toFixed(1)} kg
+							</div>
+						</div>
+					</div>
+
+					{#if latest}
+						<div class="mt-3">
+							<div class="flex justify-between text-xs text-green-700 mb-1">
+								<span>Current: {latest.weight_kg.toFixed(1)} kg</span>
+								<span>
+									{#if latest.weight_kg > perfectWeightKg!}
+										{Math.round((latest.weight_kg - perfectWeightKg!) * 10) / 10} kg to go
+									{:else}
+										Target reached! 🎉
+									{/if}
+								</span>
+							</div>
+							<div class="w-full bg-green-200 rounded-full h-2">
+								<div
+									class="bg-green-600 h-2 rounded-full transition-all"
+									style="width: {perfectWeightProgress}%"
+								></div>
+							</div>
+						</div>
+					{/if}
+				</div>
+			{:else}
+				<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-sm text-blue-800">
+					Add your first measurement to get a suggested perfect weight based on your height.
+					You can still set a custom target below.
+				</div>
+			{/if}
+
+			<form method="POST" action="?/updateTargetWeight" class="flex items-end gap-4 flex-wrap">
+				<div class="flex-1 min-w-[200px] max-w-xs">
+					<label for="targetWeight" class="block text-sm font-medium text-gray-700 mb-1">Target Weight (kg)</label>
+					<input
+						type="number"
+						id="targetWeight"
+						name="targetWeight"
+						min="25"
+						max="350"
+						step="0.1"
+						bind:value={targetWeightInput}
+						placeholder={data.perfectWeight ? data.perfectWeight.suggestedKg.toFixed(1) : 'e.g. 70'}
+						class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-green-500 focus:outline-none"
+					/>
+					<p class="text-xs text-gray-500 mt-1">Leave empty to use the suggested weight.</p>
+				</div>
+				<button
+					type="submit"
+					class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-6 rounded-md shadow-sm transition-colors cursor-pointer"
+				>
+					Save Target
+				</button>
+			</form>
+		</div>
+	{/if}
+
+	<!-- Update Birth Date -->
+	<div class="bg-white border border-gray-200 rounded-xl p-6 mb-10">
+		<h2 class="text-lg font-bold text-gray-900 mb-1">Birth Date</h2>
+		<p class="text-sm text-gray-600 mb-4">
+			Your age is calculated automatically from your birth date, so it always stays up to date.
+			It's used for age-adjusted BMI categories and safer exercise recommendations.
+		</p>
+
+		<form method="POST" action="?/updateBirthDate" class="flex items-end gap-4">
+			<div class="flex-1 max-w-xs">
+				<label for="birthDate" class="block text-sm font-medium text-gray-700 mb-1">Birth Date</label>
+				<DatePicker bind:value={birthDateInput} name="birthDate" />
+				<p class="text-xs text-gray-500 mt-1">
+					Current age: <span class="font-semibold">{data.user.age}</span> years · Click the calendar button 📅 to pick your birth date.
+				</p>
+			</div>
+			<button
+				type="submit"
+				class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-md shadow-sm transition-colors cursor-pointer"
+			>
+				Save Birth Date
+			</button>
 		</form>
 	</div>
 

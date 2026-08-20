@@ -1,7 +1,8 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import db from '$lib/server/db';
-import { calculateBodyMetrics, type Gender } from '$lib/bodyMetrics';
+import { calculateBodyMetrics, calculatePerfectWeight, type Gender } from '$lib/bodyMetrics';
+import { calculateAge, isValidBirthDate, parseDateInput } from '$lib/age';
 
 export interface MeasurementRow {
 	id: number;
@@ -24,19 +25,36 @@ export interface TrainingTypeInfo {
 	description: string;
 }
 
+export interface PerfectWeightInfo {
+	suggestedKg: number;
+	minKg: number;
+	maxKg: number;
+	customKg: number | null;
+}
+
 export const load: PageServerLoad = ({ locals }) => {
 	if (!locals.user) {
 		throw redirect(303, '/login');
 	}
 
 	const user = db
-		.prepare('SELECT id, username, email, gender, training_type FROM users WHERE id = ?')
+		.prepare(
+			'SELECT id, username, email, gender, birth_date, training_type, target_weight_kg FROM users WHERE id = ?'
+		)
 		.get(locals.user.id) as {
 		id: number;
 		username: string;
 		email: string;
 		gender: Gender;
+		birth_date: string;
 		training_type: string;
+		target_weight_kg: number | null;
+	};
+
+	// Compute age dynamically from birth date
+	const userWithAge = {
+		...user,
+		age: calculateAge(user.birth_date)
 	};
 
 	const measurementRows = db
@@ -52,10 +70,24 @@ export const load: PageServerLoad = ({ locals }) => {
 		.prepare('SELECT name, description FROM training_types WHERE name = ?')
 		.get(user.training_type) as TrainingTypeInfo | undefined;
 
+	// Calculate perfect weight for fitness users based on latest measurement height
+	let perfectWeight: PerfectWeightInfo | null = null;
+	if (user.training_type === 'fitness' && measurementRows.length > 0) {
+		const latestHeight = measurementRows[0].height_cm;
+		const range = calculatePerfectWeight(latestHeight, userWithAge.age);
+		perfectWeight = {
+			suggestedKg: range.suggestedKg,
+			minKg: range.minKg,
+			maxKg: range.maxKg,
+			customKg: user.target_weight_kg
+		};
+	}
+
 	// Calculate metrics for each measurement
 	const measurements: MeasurementWithMetrics[] = measurementRows.map((row) => {
 		const metrics = calculateBodyMetrics({
 			gender: user.gender,
+			age: userWithAge.age,
 			weightKg: row.weight_kg,
 			heightCm: row.height_cm,
 			neckCm: row.neck_cm,
@@ -72,9 +104,10 @@ export const load: PageServerLoad = ({ locals }) => {
 	});
 
 	return {
-		user,
+		user: userWithAge,
 		trainingType,
-		measurements
+		measurements,
+		perfectWeight
 	};
 };
 
@@ -103,6 +136,72 @@ export const actions: Actions = {
 		cookies.delete('session_user_id', { path: '/' });
 
 		throw redirect(303, '/login');
+	},
+
+	updateBirthDate: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const formData = await request.formData();
+		const birthDate = formData.get('birthDate')?.toString();
+
+		// Convert date input (DD/MM/YYYY or YYYY-MM-DD) to YYYY-MM-DD for storage
+		const birthDateISO = birthDate ? parseDateInput(birthDate) : null;
+		if (!birthDateISO || !isValidBirthDate(birthDateISO)) {
+			return fail(400, { error: 'Please enter a valid birth date.' });
+		}
+
+		const age = calculateAge(birthDateISO);
+		if (age < 13 || age > 120) {
+			return fail(400, { error: 'You must be between 13 and 120 years old.' });
+		}
+
+		try {
+			db.prepare('UPDATE users SET birth_date = ? WHERE id = ?').run(birthDateISO, locals.user.id);
+		} catch (err) {
+			console.error('Failed to update birth date:', err);
+			return fail(500, { error: 'Failed to save your birth date. Please try again.' });
+		}
+
+		return { success: true, message: 'Your birth date has been updated.' };
+	},
+
+	updateTargetWeight: async ({ request, locals }) => {
+		if (!locals.user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const formData = await request.formData();
+		const targetWeightRaw = formData.get('targetWeight')?.toString();
+
+		// Empty value means "use suggested weight" (clear custom target)
+		if (!targetWeightRaw || targetWeightRaw.trim() === '') {
+			try {
+				db.prepare('UPDATE users SET target_weight_kg = NULL WHERE id = ?').run(locals.user.id);
+			} catch (err) {
+				console.error('Failed to clear target weight:', err);
+				return fail(500, { error: 'Failed to save your target weight. Please try again.' });
+			}
+			return { success: true, message: 'Using your suggested perfect weight.' };
+		}
+
+		const targetWeight = Number(targetWeightRaw);
+		if (isNaN(targetWeight) || targetWeight < 25 || targetWeight > 350) {
+			return fail(400, { error: 'Please enter a valid target weight (25-350 kg).' });
+		}
+
+		try {
+			db.prepare('UPDATE users SET target_weight_kg = ? WHERE id = ?').run(
+				targetWeight,
+				locals.user.id
+			);
+		} catch (err) {
+			console.error('Failed to update target weight:', err);
+			return fail(500, { error: 'Failed to save your target weight. Please try again.' });
+		}
+
+		return { success: true, message: 'Your perfect weight target has been updated.' };
 	},
 
 	updateGoal: async ({ request, locals }) => {
