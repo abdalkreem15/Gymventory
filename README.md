@@ -1,6 +1,6 @@
 # Gymventory
 
-#### Video Demo: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+#### Video Demo: https://www.youtube.com/watch?v=xvFZjo5PgG0
 #### Description:
 
 Gymventory is a web application that helps gym-goers manage their equipment inventory and receive personalized workout recommendations. Instead of browsing generic workout lists that may require equipment you don't have, Gymventory lets you select the equipment available in your gym or home setup and then recommends exercises you can actually perform right now. The app also tracks your body metrics — including BMI, body fat percentage, and a suggested "perfect weight" — and adjusts exercise recommendations based on your age for safety.
