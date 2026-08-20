@@ -7,6 +7,13 @@ Gymventory is a web application that helps gym-goers manage their equipment inve
 
 The application supports six training goals: **Fitness & Weight Loss**, **Bodybuilding**, **Boxing**, **Kickboxing**, **Kung Fu**, and **Swimming**. Each goal unlocks sport-specific exercises and equipment recommendations tailored to that discipline.
 
+## Tech Stack
+
+- **Framework:** [SvelteKit](https://kit.svelte.dev/) (Svelte 5 + TypeScript)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/)
+- **Database:** [SQLite](https://www.sqlite.org/) via [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3)
+- **Security:** Node.js `crypto` (`scryptSync` + per-user salt) & HTTP-only session cookies
+
 ## Features
 
 - **User Authentication** — Register and log in with securely hashed passwords (scrypt with per-user salt) and HTTP-only session cookies.
