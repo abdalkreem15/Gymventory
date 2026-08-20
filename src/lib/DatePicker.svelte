@@ -35,6 +35,7 @@
 	const today = new Date();
 	let viewYear = $state(today.getFullYear());
 	let viewMonth = $state(today.getMonth() + 1); // 1-12
+	let viewMode = $state<'day' | 'year'>('day'); // 'day' = month/day grid, 'year' = year selection grid
 	let isOpen = $state(false);
 
 	let inputEl = $state<HTMLInputElement | null>(null);
@@ -106,12 +107,43 @@
 		}
 	}
 
+	function prevYear(): void {
+		viewYear--;
+	}
+
+	function nextYear(): void {
+		viewYear++;
+	}
+
+	// Start year of the 12-year grid shown in year mode
+	const gridStartYear = $derived(Math.floor(viewYear / 10) * 10 - 1);
+
+	const yearGrid = $derived.by(() => {
+		const years: number[] = [];
+		for (let y = gridStartYear; y < gridStartYear + 12; y++) years.push(y);
+		return years;
+	});
+
+	function prevYearRange(): void {
+		viewYear -= 10;
+	}
+
+	function nextYearRange(): void {
+		viewYear += 10;
+	}
+
+	function selectYear(year: number): void {
+		viewYear = year;
+		viewMode = 'day';
+	}
+
 	function toggleCalendar(): void {
 		// Reset view to selected date if available
 		if (selected) {
 			viewYear = selected.year;
 			viewMonth = selected.month;
 		}
+		viewMode = 'day';
 		isOpen = !isOpen;
 	}
 
@@ -174,61 +206,128 @@
 			onkeydown={handleKeydown}
 			class="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl p-4 w-72"
 		>
-			<!-- Month/Year header -->
-			<div class="flex items-center justify-between mb-3">
-				<button
-					type="button"
-					onclick={prevMonth}
-					title="Previous month"
-					aria-label="Previous month"
-					class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
-				>
-					◀
-				</button>
-				<div class="font-semibold text-gray-900">
-					{monthNames[viewMonth - 1]} {viewYear}
+			{#if viewMode === 'day'}
+				<!-- Month/Year header -->
+				<div class="flex items-center justify-between mb-3">
+					<button
+						type="button"
+						onclick={prevYear}
+						title="Previous year"
+						aria-label="Previous year"
+						class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+					>
+						«
+					</button>
+					<button
+						type="button"
+						onclick={prevMonth}
+						title="Previous month"
+						aria-label="Previous month"
+						class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+					>
+						◀
+					</button>
+					<button
+						type="button"
+						onclick={() => (viewMode = 'year')}
+						title="Click to pick a year"
+						aria-label="Open year selection"
+						class="font-semibold text-gray-900 hover:bg-gray-100 rounded-md px-2 py-1 transition-colors cursor-pointer"
+					>
+						{monthNames[viewMonth - 1]} {viewYear}
+					</button>
+					<button
+						type="button"
+						onclick={nextMonth}
+						title="Next month"
+						aria-label="Next month"
+						class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+					>
+						▶
+					</button>
+					<button
+						type="button"
+						onclick={nextYear}
+						title="Next year"
+						aria-label="Next year"
+						class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+					>
+						»
+					</button>
 				</div>
-				<button
-					type="button"
-					onclick={nextMonth}
-					title="Next month"
-					aria-label="Next month"
-					class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
-				>
-					▶
-				</button>
-			</div>
 
-			<!-- Day names -->
-			<div class="grid grid-cols-7 gap-1 mb-1">
-				{#each dayNames as dayName (dayName)}
-					<div class="text-center text-xs font-semibold text-gray-500 py-1">{dayName}</div>
-				{/each}
-			</div>
+				<!-- Day names -->
+				<div class="grid grid-cols-7 gap-1 mb-1">
+					{#each dayNames as dayName (dayName)}
+						<div class="text-center text-xs font-semibold text-gray-500 py-1">{dayName}</div>
+					{/each}
+				</div>
 
-			<!-- Calendar grid -->
-			<div class="grid grid-cols-7 gap-1">
-				{#each calendarDays as day, i (i)}
-					{#if day === null}
-						<div class="h-9"></div>
-					{:else}
+				<!-- Calendar grid -->
+				<div class="grid grid-cols-7 gap-1">
+					{#each calendarDays as day, i (i)}
+						{#if day === null}
+							<div class="h-9"></div>
+						{:else}
+							<button
+								type="button"
+								onclick={() => selectDay(day!)}
+								disabled={isDisabled(day)}
+								class="h-9 w-9 mx-auto flex items-center justify-center rounded-md text-sm transition-colors cursor-pointer
+									{isSelected(day)
+										? 'bg-blue-600 text-white font-semibold'
+										: isToday(day)
+											? 'bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200'
+											: 'text-gray-700 hover:bg-gray-100'}
+									{isDisabled(day) ? 'opacity-40 cursor-not-allowed' : ''}"
+							>
+								{day}
+							</button>
+						{/if}
+					{/each}
+				</div>
+			{:else}
+				<!-- Year selection header -->
+				<div class="flex items-center justify-between mb-3">
+					<button
+						type="button"
+						onclick={prevYearRange}
+						title="Previous 10 years"
+						aria-label="Previous 10 years"
+						class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+					>
+						«
+					</button>
+					<div class="font-semibold text-gray-900">
+						{gridStartYear + 1} – {gridStartYear + 10}
+					</div>
+					<button
+						type="button"
+						onclick={nextYearRange}
+						title="Next 10 years"
+						aria-label="Next 10 years"
+						class="w-8 h-8 flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer"
+					>
+						»
+					</button>
+				</div>
+
+				<!-- Year grid -->
+				<div class="grid grid-cols-3 gap-1">
+					{#each yearGrid as year (year)}
 						<button
 							type="button"
-							onclick={() => selectDay(day!)}
-							disabled={isDisabled(day)}
-							class="h-9 w-9 mx-auto flex items-center justify-center rounded-md text-sm transition-colors cursor-pointer
-								{isSelected(day)
+							onclick={() => selectYear(year)}
+							class="h-10 flex items-center justify-center rounded-md text-sm transition-colors cursor-pointer
+								{year === viewYear
 									? 'bg-blue-600 text-white font-semibold'
-									: isToday(day)
-										? 'bg-blue-100 text-blue-700 font-semibold hover:bg-blue-200'
-										: 'text-gray-700 hover:bg-gray-100'}
-								{isDisabled(day) ? 'opacity-40 cursor-not-allowed' : ''}"
+									: 'text-gray-700 hover:bg-gray-100'}"
 						>
-							{day}
+							{year}
 						</button>
-					{/if}
-				{/each}
-			</div>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
