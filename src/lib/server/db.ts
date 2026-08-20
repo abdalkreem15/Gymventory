@@ -74,7 +74,7 @@ db.exec(`
     );
 `);
 
-// Migration: add target_weight_kg column to existing users tables
+// Add target_weight_kg column to existing users tables
 const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
 if (!userColumns.some((col) => col.name === 'target_weight_kg')) {
 	db.exec('ALTER TABLE users ADD COLUMN target_weight_kg REAL');
@@ -85,6 +85,7 @@ const exerciseCount = db
 	.prepare('SELECT COUNT(*) as count FROM exercises')
 	.get() as { count: number };
 
+// used ai to generate the list of exercises and equipment, then manually verified and adjusted them for accuracy and relevance to the app's purpose.
 if (exerciseCount.count === 0) {
 	// Canonical merged equipment list (15 core items + 5 extras + sport-specific gear)
 	const equipmentList = [
@@ -118,7 +119,7 @@ if (exerciseCount.count === 0) {
 		'Swim Fins'
 	];
 
-	// Mapping exercises to target muscles & required equipment
+	// Mapping exercises to target muscles & required equipment sort of made by ai because i dont know the usage of every machine and exercise, but i verified and adjusted them manually for accuracy and relevance to the app's purpose.
 	const exercisesList: {
 		name: string;
 		target_muscle: string;

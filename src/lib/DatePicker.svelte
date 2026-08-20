@@ -1,3 +1,4 @@
+<!-- mostly made by ai because i got fully stuck doing it -->
 <script lang="ts">
 	interface Props {
 		value?: string;

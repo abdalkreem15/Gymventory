@@ -1,3 +1,4 @@
+// mostly done by me but has some ai modificaition to comments because mine were inconclusive
 export type Gender = 'male' | 'female';
 
 export interface BodyMetricsInput {

@@ -1,3 +1,4 @@
+// mostly made by ai because i got fully stuck doing it
 /**
  * Convert a DD/MM/YYYY date string to YYYY-MM-DD format.
  * Returns null if the input is not a valid DD/MM/YYYY date.
